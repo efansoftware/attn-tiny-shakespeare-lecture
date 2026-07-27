@@ -2,20 +2,24 @@ import torch
 import torch.nn as nn
 from torch.nn import functional as F
 
+import time
+
 # hyperparameters
 batch_size = 64 # how many independent sequences will we process in parallel?
 block_size = 256 # what is the maximum context length for predictions?
-max_iters = 5000
+max_iters = 10 #2 #5 #5000
 eval_interval = 500
 learning_rate = 3e-4
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
-eval_iters = 200
+eval_iters = 2 #20 #200
 n_embd = 384
 n_head = 6
 n_layer = 6
 dropout = 0.2
 # ------------
 
+t0 = int(time.time())
+print("Start-time: ", t0, "\n")
 torch.manual_seed(1337)
 
 # wget https://raw.githubusercontent.com/karpathy/char-rnn/master/data/tinyshakespeare/input.txt
@@ -25,6 +29,8 @@ with open('input.txt', 'r', encoding='utf-8') as f:
 # here are all the unique characters that occur in this text
 chars = sorted(list(set(text)))
 vocab_size = len(chars)
+print("Vocab size: ", vocab_size)
+
 # create a mapping from characters to integers
 stoi = { ch:i for i,ch in enumerate(chars) }
 itos = { i:ch for i,ch in enumerate(chars) }
@@ -135,7 +141,7 @@ class Block(nn.Module):
         x = x + self.ffwd(self.ln2(x))
         return x
 
-class GPTLanguageModel(nn.Module):
+class KarpLanguageModel(nn.Module):
 
     def __init__(self):
         super().__init__()
@@ -146,7 +152,7 @@ class GPTLanguageModel(nn.Module):
         self.ln_f = nn.LayerNorm(n_embd) # final layer norm
         self.lm_head = nn.Linear(n_embd, vocab_size)
 
-        # better init, not covered in the original GPT video, but important, will cover in followup video
+        # better init, not covered in the original Karp video, but important, will cover in followup video
         self.apply(self._init_weights)
 
     def _init_weights(self, module):
@@ -195,7 +201,8 @@ class GPTLanguageModel(nn.Module):
             idx = torch.cat((idx, idx_next), dim=1) # (B, T+1)
         return idx
 
-model = GPTLanguageModel()
+print("Init KarpLanguageModel...@Device: ", device)
+model = KarpLanguageModel()
 m = model.to(device)
 # print the number of parameters in the model
 print(sum(p.numel() for p in m.parameters())/1e6, 'M parameters')
@@ -223,3 +230,9 @@ for iter in range(max_iters):
 context = torch.zeros((1, 1), dtype=torch.long, device=device)
 print(decode(m.generate(context, max_new_tokens=500)[0].tolist()))
 #open('more.txt', 'w').write(decode(m.generate(context, max_new_tokens=10000)[0].tolist()))
+
+t1 = int(time.time())
+t = (t1 - t0) / 60
+print("\nStart-time: ", t0)
+print("End-time: ", t1)
+print(t, " mins == ", t/60, " hours")
